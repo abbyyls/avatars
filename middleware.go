@@ -1,27 +1,23 @@
 package main
 
 import (
-    "net/http"
     "github.com/zenazn/goji/web"
     "gopkg.in/mgo.v2/bson"
-    "encoding/json"
+	"net/http"
 )
 
-func SetFile(c *web.C, h http.Handler) http.Handler {
+// Check if "Id" is bson.ObjectId
+func CheckId(c *web.C, h http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        fileId := c.URLParams["id"]
-        if !bson.IsObjectIdHex(fileId) {
-            w.WriteHeader(http.StatusBadRequest)
-            json.NewEncoder(w).Encode(map[string]string{"msg":`"Id" must be bson.ObjectId of type`})
+        if fileId, ok := c.URLParams["id"]; ok {
+	        if !bson.IsObjectIdHex(fileId) {
+				JsonResponseMsg(w, http.StatusBadRequest, `"Id" must be bson.ObjectId of type`)
+	            return
+	        }
+		} else {
+			JsonResponseMsg(w, http.StatusBadRequest, `"Id" not set`)
             return
-        }
-        file,err := GetImageById(bson.ObjectIdHex(fileId))
-        if err != nil {
-            w.WriteHeader(http.StatusNotFound)
-            json.NewEncoder(w).Encode(map[string]string{"msg": err.Error()})
-            return
-        }
-        c.Env["file"] = file
-        h.ServeHTTP(w, r)
-    })
+		}
+		h.ServeHTTP(w, r)
+	})
 }
