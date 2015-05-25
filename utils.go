@@ -1,73 +1,47 @@
 package main
 
 import (
-    "encoding/json"
-	"fmt"
-	"gopkg.in/mgo.v2"
+	"bytes"
+	"encoding/json"
+	"errors"
 	"io"
 	"io/ioutil"
-	"mime"
 	"net/http"
-	"path/filepath"
 )
 
 const MaxFileSize = 10 * 1024 * 1024 // 10 MB
 
-
-type httperror interface {
-    error
-    Status() int  // http status code
-}
-
-// HttpError is an httperror implementation that includes a http status code and message.
-type HttpError struct {
-	status int
-	message string
-}
-
-func (e HttpError) Error() string {
-	return fmt.Sprint(e.message)
-}
-
-func (e HttpError) Status() int {
-	return e.status
-}
-
 // Check whether the file size is acceptable.
-func checkFileSize(r io.Reader) httperror {
-	data, err := ioutil.ReadAll(io.LimitReader(r, MaxFileSize + 1))
+func checkFileSize(r io.Reader) error {
+	data, err := ioutil.ReadAll(io.LimitReader(r, MaxFileSize+1))
 	if err != nil {
-		return HttpError{http.StatusInternalServerError, err.Error()}
+		return err
 	}
 	if len(data) > MaxFileSize {
-		return HttpError{http.StatusRequestEntityTooLarge, `file is too large`}
+		return errors.New(`file is too large`)
 	}
 	return nil
 }
 
 // Check whether a string slice contains a certain value.
 func contains(slice []string, value string) bool {
-    for _, item := range slice {
+	for _, item := range slice {
 		if item == value {
 			return true
 		}
 	}
-    return false
+	return false
 }
 
-// Get content type of GridFS-file if set. Otherwise guess by extension.
-// If it cannot determine a more specific one,
-// it returns "application/octet-stream".
-func getMimeType(file *mgo.GridFile) string {
-	filetype := file.ContentType()
-	if filetype == "" {
-		filetype := mime.TypeByExtension(filepath.Ext(file.Name()))
-		if filetype == "" {
-			return "application/octet-stream"
-		}
-		return filetype
+// Get content type of file if set. Otherwise returns "application/octet-stream".
+func getFileType(file io.Reader) (reader *bytes.Reader, filetype string, err error) {
+	var array []byte
+	if array, err = ioutil.ReadAll(file); err != nil {
+		return
 	}
-	return filetype
+	filetype = http.DetectContentType(array)
+	reader = bytes.NewReader(array)
+	return
 }
 
 // Write JSON-response with given status code and message.
@@ -78,7 +52,7 @@ func JsonResponseMsg(w http.ResponseWriter, status int, msg string) {
 	if err := json.NewEncoder(w).Encode(map[string]string{"msg": msg}); err != nil {
 		panic(err)
 	}
-    return
+	return
 }
 
 // Write JSON-response with given status code and struct object.
@@ -90,5 +64,5 @@ func JsonResponseFromStruct(w http.ResponseWriter, status int, avatar *Avatar) {
 		panic(err)
 	}
 	w.Write(jsonString)
-    return
+	return
 }
