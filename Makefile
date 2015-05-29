@@ -9,3 +9,5 @@ run:
 
 build:
 	go build -o avatars
+	
+buildrun: build run
