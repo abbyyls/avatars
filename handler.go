@@ -6,7 +6,6 @@ import (
 	"github.com/nfnt/resize"
 	"github.com/zenazn/goji/web"
 	"golang.org/x/image/bmp"
-	//	"gopkg.in/mgo.v2/bson"
 	"image"
 	"image/gif"
 	"image/jpeg"

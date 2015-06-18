@@ -34,14 +34,14 @@ func getSession() *mgo.Session {
 	return mgoSession.Clone()
 }
 
-func withDatabase(fn func(*mgo.Database) (interface{}, error)) (interface{}, error) {
+func getObjectWithDatabase(fn func(*mgo.Database) (interface{}, error)) (interface{}, error) {
 	session := getSession()
 	defer session.Close()
 	db := session.DB(*MongoDatabase)
 	return fn(db)
 }
 
-func deleteWithDatabase(fn func(*mgo.Database) error) error {
+func withDatabase(fn func(*mgo.Database) error) error {
 	session := getSession()
 	defer session.Close()
 	db := session.DB(*MongoDatabase)
@@ -111,7 +111,7 @@ func getImageById(id string, isOrigin bool) (file interface{}, err error) {
 		return buf, err
 	}
 	search := func() (interface{}, error) {
-		return withDatabase(query)
+		return getObjectWithDatabase(query)
 	}
 	file, err = search()
 	if err != nil {
@@ -120,7 +120,7 @@ func getImageById(id string, isOrigin bool) (file interface{}, err error) {
 	return
 }
 
-func InsertImage(hash_id string, file *bytes.Reader, filename string) (err error) {
+func InsertImage(id string, file *bytes.Reader, filename string) (err error) {
 	query := func(db *mgo.Database) (err error) {
 		var storedFile *mgo.GridFile
 		storedFile, err = db.GridFS(*GridFsPrefix).Create(filename)
@@ -135,9 +135,9 @@ func InsertImage(hash_id string, file *bytes.Reader, filename string) (err error
 		}
 
 		fileid := storedFile.Id().(bson.ObjectId)
-		url := ApiUrl + "file/" + hash_id
+		url := ApiUrl + "file/" + id
 		err = db.C(*MongoCollection).Insert(&Avatar{
-			Id:        hash_id,
+			Id:        id,
 			UrlOrigin: url + "/raw",
 			UrlThumb:  url,
 			Origin:    fileid,
@@ -146,7 +146,7 @@ func InsertImage(hash_id string, file *bytes.Reader, filename string) (err error
 		return err
 	}
 	search := func() (err error) {
-		return deleteWithDatabase(query)
+		return withDatabase(query)
 	}
 	err = search()
 	if err != nil {
@@ -155,7 +155,7 @@ func InsertImage(hash_id string, file *bytes.Reader, filename string) (err error
 	return
 }
 
-func InsertImageAndThumbnail(hash_id string, file *bytes.Reader, filename string, mask []int) (err error) {
+func InsertImageAndThumbnail(id string, file *bytes.Reader, filename string, mask []int) (err error) {
 	query := func(db *mgo.Database) (err error) {
 		var storedFile, storedThumbFile *mgo.GridFile
 		storedFile, err = db.GridFS(*GridFsPrefix).Create(filename)
@@ -216,10 +216,10 @@ func InsertImageAndThumbnail(hash_id string, file *bytes.Reader, filename string
 
 		fileId := storedFile.Id().(bson.ObjectId)
 		thumbFileId := storedThumbFile.Id().(bson.ObjectId)
-		url := ApiUrl + "file/" + hash_id
+		url := ApiUrl + "file/" + id
 
 		err = db.C(*MongoCollection).Insert(&Avatar{
-			Id:        hash_id,
+			Id:        id,
 			UrlOrigin: url + "/raw",
 			UrlThumb:  url,
 			Origin:    fileId,
@@ -228,7 +228,7 @@ func InsertImageAndThumbnail(hash_id string, file *bytes.Reader, filename string
 		return err
 	}
 	search := func() (err error) {
-		return deleteWithDatabase(query)
+		return withDatabase(query)
 	}
 	err = search()
 	if err != nil {
@@ -321,7 +321,7 @@ func ChangeThumbnail(id string, mask []int) (result interface{}, err error) {
 		return result, err
 	}
 	search := func() (result interface{}, err error) {
-		return withDatabase(query)
+		return getObjectWithDatabase(query)
 	}
 	result, err = search()
 	if err != nil {
@@ -350,7 +350,7 @@ func DeleteImage(id string) (err error) {
 		return
 	}
 	search := func() (err error) {
-		return deleteWithDatabase(query)
+		return withDatabase(query)
 	}
 	err = search()
 	if err != nil {
