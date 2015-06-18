@@ -1,4 +1,6 @@
 
+EXECUTABLE_FILE_NAME = avatars
+
 all: install build
 
 install:
@@ -8,6 +10,11 @@ run:
 	go run *.go
 
 build:
-	go build -o avatars
+	go build -o $(EXECUTABLE_FILE_NAME)
 	
+clean:
+	rm ./$(EXECUTABLE_FILE_NAME)
+
 buildrun: build run
+
+.PHONY: all run install build buildrun clean

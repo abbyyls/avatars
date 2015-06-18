@@ -6,7 +6,6 @@ import (
 	"github.com/nfnt/resize"
 	"github.com/zenazn/goji/web"
 	"golang.org/x/image/bmp"
-	"gopkg.in/mgo.v2/bson"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -75,20 +74,18 @@ func UploadFile(c web.C, w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var idObj interface{}
+		idObj := c.URLParams["id"]
 		if mask.Mask != nil {
-			idObj, err = InsertImageAndThumbnail(reader, filename, mask.Mask)
+			err = InsertImageAndThumbnail(idObj, reader, filename, mask.Mask)
 		} else {
-			idObj, err = InsertImage(reader, filename)
+			err = InsertImage(idObj, reader, filename)
 		}
 		if err != nil {
 			JsonResponseMsg(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 
-		id := idObj.(*bson.ObjectId)
-
-		avatar, err := GetAvatarStructById(id)
+		avatar, err := GetAvatarStructById(idObj)
 		if err != nil {
 			JsonResponseMsg(w, http.StatusInternalServerError, err.Error())
 			return
@@ -117,8 +114,7 @@ func ChangeMask(c web.C, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := bson.ObjectIdHex(c.URLParams["id"])
-	avatarInterface, err = ChangeThumbnail(&id, mask.Mask)
+	avatarInterface, err = ChangeThumbnail(c.URLParams["id"], mask.Mask)
 	if err != nil {
 		JsonResponseMsg(w, http.StatusInternalServerError, err.Error())
 		return
@@ -130,8 +126,7 @@ func ChangeMask(c web.C, w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteFile(c web.C, w http.ResponseWriter, r *http.Request) {
-	id := bson.ObjectIdHex(c.URLParams["id"])
-	err := DeleteImage(&id)
+	err := DeleteImage(c.URLParams["id"])
 	if err != nil {
 		JsonResponseMsg(w, http.StatusInternalServerError, err.Error())
 		return
@@ -142,7 +137,7 @@ func DeleteFile(c web.C, w http.ResponseWriter, r *http.Request) {
 }
 
 func GetOriginalFile(c web.C, w http.ResponseWriter, r *http.Request) {
-	imageToResponse(GetOriginalImageById, bson.ObjectIdHex(c.URLParams["id"]), w)
+	imageToResponse(GetOriginalImageById, c.URLParams["id"], w)
 	return
 }
 
@@ -154,12 +149,11 @@ func GetResizedFile(c web.C, w http.ResponseWriter, r *http.Request) {
 	)
 
 	if len(r.URL.Query()) == 0 {
-		imageToResponse(GetThumbnailImageById, bson.ObjectIdHex(c.URLParams["id"]), w)
+		imageToResponse(GetThumbnailImageById, c.URLParams["id"], w)
 		return
 	}
 
-	id := bson.ObjectIdHex(c.URLParams["id"])
-	buf, err := GetThumbnailImageById(&id)
+	buf, err := GetThumbnailImageById(c.URLParams["id"])
 	if err != nil {
 		JsonResponseMsg(w, http.StatusInternalServerError, err.Error())
 		return
@@ -232,8 +226,8 @@ func GetResizedFile(c web.C, w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func imageToResponse(fn func(*bson.ObjectId) (interface{}, error), id bson.ObjectId, w http.ResponseWriter) {
-	buf, err := fn(&id)
+func imageToResponse(fn func(string) (interface{}, error), id string, w http.ResponseWriter) {
+	buf, err := fn(id)
 	if err != nil {
 		JsonResponseMsg(w, http.StatusInternalServerError, err.Error())
 		return

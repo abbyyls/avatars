@@ -34,14 +34,14 @@ func getSession() *mgo.Session {
 	return mgoSession.Clone()
 }
 
-func withDatabase(fn func(*mgo.Database) (interface{}, error)) (interface{}, error) {
+func getObjectWithDatabase(fn func(*mgo.Database) (interface{}, error)) (interface{}, error) {
 	session := getSession()
 	defer session.Close()
 	db := session.DB(*MongoDatabase)
 	return fn(db)
 }
 
-func deleteWithDatabase(fn func(*mgo.Database) error) error {
+func withDatabase(fn func(*mgo.Database) error) error {
 	session := getSession()
 	defer session.Close()
 	db := session.DB(*MongoDatabase)
@@ -55,8 +55,8 @@ func withCollection(collection string, fn func(*mgo.Collection) error) error {
 	return fn(c)
 }
 
-func GetAvatarStructById(id *bson.ObjectId) (searchResult *Avatar, err error) {
-	searchResult, err = getAvatarStruct(*MongoCollection, bson.M{"_id": *id})
+func GetAvatarStructById(id string) (searchResult *Avatar, err error) {
+	searchResult, err = getAvatarStruct(*MongoCollection, bson.M{"_id": id})
 	return
 }
 
@@ -76,18 +76,18 @@ func getAvatarStruct(collectionName string, q interface{}) (searchResult *Avatar
 	return
 }
 
-func GetOriginalImageById(id *bson.ObjectId) (file interface{}, err error) {
+func GetOriginalImageById(id string) (file interface{}, err error) {
 	return getImageById(id, true)
 }
 
-func GetThumbnailImageById(id *bson.ObjectId) (file interface{}, err error) {
+func GetThumbnailImageById(id string) (file interface{}, err error) {
 	return getImageById(id, false)
 }
 
-func getImageById(id *bson.ObjectId, isOrigin bool) (file interface{}, err error) {
+func getImageById(id string, isOrigin bool) (file interface{}, err error) {
 	query := func(db *mgo.Database) (interface{}, error) {
 		result := &Avatar{}
-		err = db.C(*MongoCollection).FindId(*id).One(&result)
+		err = db.C(*MongoCollection).FindId(id).One(&result)
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +111,7 @@ func getImageById(id *bson.ObjectId, isOrigin bool) (file interface{}, err error
 		return buf, err
 	}
 	search := func() (interface{}, error) {
-		return withDatabase(query)
+		return getObjectWithDatabase(query)
 	}
 	file, err = search()
 	if err != nil {
@@ -120,8 +120,8 @@ func getImageById(id *bson.ObjectId, isOrigin bool) (file interface{}, err error
 	return
 }
 
-func InsertImage(file *bytes.Reader, filename string) (id interface{}, err error) {
-	query := func(db *mgo.Database) (id interface{}, err error) {
+func InsertImage(id string, file *bytes.Reader, filename string) (err error) {
+	query := func(db *mgo.Database) (err error) {
 		var storedFile *mgo.GridFile
 		storedFile, err = db.GridFS(*GridFsPrefix).Create(filename)
 		if err != nil {
@@ -135,30 +135,28 @@ func InsertImage(file *bytes.Reader, filename string) (id interface{}, err error
 		}
 
 		fileid := storedFile.Id().(bson.ObjectId)
-		newid := bson.NewObjectId()
-		id = &newid
-		url := ApiUrl + "file/" + newid.Hex()
+		url := ApiUrl + "file/" + id
 		err = db.C(*MongoCollection).Insert(&Avatar{
-			Id:        newid,
+			Id:        id,
 			UrlOrigin: url + "/raw",
 			UrlThumb:  url,
 			Origin:    fileid,
 			Thumb:     fileid,
 		})
-		return id, err
+		return err
 	}
-	search := func() (id interface{}, err error) {
+	search := func() (err error) {
 		return withDatabase(query)
 	}
-	id, err = search()
+	err = search()
 	if err != nil {
 		return
 	}
 	return
 }
 
-func InsertImageAndThumbnail(file *bytes.Reader, filename string, mask []int) (id interface{}, err error) {
-	query := func(db *mgo.Database) (id interface{}, err error) {
+func InsertImageAndThumbnail(id string, file *bytes.Reader, filename string, mask []int) (err error) {
+	query := func(db *mgo.Database) (err error) {
 		var storedFile, storedThumbFile *mgo.GridFile
 		storedFile, err = db.GridFS(*GridFsPrefix).Create(filename)
 		if err != nil {
@@ -198,7 +196,7 @@ func InsertImageAndThumbnail(file *bytes.Reader, filename string, mask []int) (i
 		case *image.Paletted:
 			thumb = pic.SubImage(rect)
 		default:
-			return id, errors.New(`can't convert image`)
+			return errors.New(`can't convert image`)
 		}
 
 		switch filetype {
@@ -218,30 +216,28 @@ func InsertImageAndThumbnail(file *bytes.Reader, filename string, mask []int) (i
 
 		fileId := storedFile.Id().(bson.ObjectId)
 		thumbFileId := storedThumbFile.Id().(bson.ObjectId)
-		newid := bson.NewObjectId()
-		id = &newid
-		url := ApiUrl + "file/" + newid.Hex()
+		url := ApiUrl + "file/" + id
 
 		err = db.C(*MongoCollection).Insert(&Avatar{
-			Id:        newid,
+			Id:        id,
 			UrlOrigin: url + "/raw",
 			UrlThumb:  url,
 			Origin:    fileId,
 			Thumb:     thumbFileId,
 		})
-		return id, err
+		return err
 	}
-	search := func() (id interface{}, err error) {
+	search := func() (err error) {
 		return withDatabase(query)
 	}
-	id, err = search()
+	err = search()
 	if err != nil {
 		return
 	}
 	return
 }
 
-func ChangeThumbnail(id *bson.ObjectId, mask []int) (result interface{}, err error) {
+func ChangeThumbnail(id string, mask []int) (result interface{}, err error) {
 	query := func(db *mgo.Database) (interface{}, error) {
 		var err error
 		searchResult := &Avatar{}
@@ -325,7 +321,7 @@ func ChangeThumbnail(id *bson.ObjectId, mask []int) (result interface{}, err err
 		return result, err
 	}
 	search := func() (result interface{}, err error) {
-		return withDatabase(query)
+		return getObjectWithDatabase(query)
 	}
 	result, err = search()
 	if err != nil {
@@ -334,7 +330,7 @@ func ChangeThumbnail(id *bson.ObjectId, mask []int) (result interface{}, err err
 	return
 }
 
-func DeleteImage(id *bson.ObjectId) (err error) {
+func DeleteImage(id string) (err error) {
 	query := func(db *mgo.Database) (err error) {
 		result := Avatar{}
 		if err = db.C(*MongoCollection).FindId(id).One(&result); err != nil {
@@ -354,7 +350,7 @@ func DeleteImage(id *bson.ObjectId) (err error) {
 		return
 	}
 	search := func() (err error) {
-		return deleteWithDatabase(query)
+		return withDatabase(query)
 	}
 	err = search()
 	if err != nil {
