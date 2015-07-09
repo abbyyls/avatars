@@ -18,7 +18,7 @@ func checkFileSize(r io.Reader) error {
 		return err
 	}
 	if len(data) > MaxFileSize {
-		return errors.New(`file is too large`)
+		return errors.New(`CONTENT_LENGTH_TOO_LARGE`)
 	}
 	return nil
 }

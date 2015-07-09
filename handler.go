@@ -3,9 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/nfnt/resize"
-	"github.com/zenazn/goji/web"
-	"golang.org/x/image/bmp"
 	"image"
 	"image/gif"
 	"image/jpeg"
@@ -14,6 +11,10 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+
+	"github.com/nfnt/resize"
+	"github.com/zenazn/goji/web"
+	"golang.org/x/image/bmp"
 )
 
 var supportedMediaTypes = []string{"image/jpeg", "image/jpg", "image/bmp", "image/png", "image/png"}
@@ -64,7 +65,7 @@ func UploadFile(c web.C, w http.ResponseWriter, r *http.Request) {
 
 		// check file size
 		if err = checkFileSize(file); err != nil {
-			JsonResponseMsg(w, http.StatusInternalServerError, err.Error())
+			JsonResponseMsg(w, http.StatusRequestEntityTooLarge, err.Error())
 			return
 		}
 
@@ -209,7 +210,7 @@ func GetResizedFile(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	// check if file type is supported
 	if ok := contains(supportedMediaTypes, filetype); !ok {
-		JsonResponseMsg(w, http.StatusUnsupportedMediaType, `unsupported media type`)
+		JsonResponseMsg(w, http.StatusUnsupportedMediaType, `UNSUPPORTED_MEDIA_TYPE`)
 		return
 	}
 
