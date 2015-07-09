@@ -3,15 +3,16 @@ package main
 import (
 	"bytes"
 	"errors"
-	"github.com/drone/config"
-	"golang.org/x/image/bmp"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 	"image"
 	"image/gif"
 	"image/jpeg"
 	"image/png"
 	"io"
+
+	"github.com/drone/config"
+	"golang.org/x/image/bmp"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (

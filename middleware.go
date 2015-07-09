@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/zenazn/goji/web"
 	"log"
 	"net/http"
 	"regexp"
+
+	"github.com/zenazn/goji/web"
 )
 
 // Check if "Id" is MD5 hash string
