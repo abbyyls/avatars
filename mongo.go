@@ -121,7 +121,11 @@ func getImageById(id string, isOrigin bool) (file interface{}, err error) {
 	return
 }
 
-func InsertImage(id string, file *bytes.Reader, filename string) (err error) {
+func InsertImage(id string, fileBytesArray []byte, filename string, isNew bool) (err error) {
+	if err = checkForExistedImage(id, isNew); err != nil {
+		return err
+	}
+
 	query := func(db *mgo.Database) (err error) {
 		var storedFile *mgo.GridFile
 		storedFile, err = db.GridFS(*GridFsPrefix).Create(filename)
@@ -130,7 +134,7 @@ func InsertImage(id string, file *bytes.Reader, filename string) (err error) {
 		}
 		defer storedFile.Close()
 
-		_, err = io.Copy(storedFile, file)
+		_, err = io.Copy(storedFile, bytes.NewReader(fileBytesArray))
 		if err != nil {
 			return
 		}
@@ -156,7 +160,11 @@ func InsertImage(id string, file *bytes.Reader, filename string) (err error) {
 	return
 }
 
-func InsertImageAndThumbnail(id string, file *bytes.Reader, filename string, mask []int) (err error) {
+func InsertImageAndThumbnail(id string, fileBytesArray []byte, filename string, mask []int, isNew bool) (err error) {
+	if err = checkForExistedImage(id, isNew); err != nil {
+		return err
+	}
+
 	query := func(db *mgo.Database) (err error) {
 		var storedFile, storedThumbFile *mgo.GridFile
 		storedFile, err = db.GridFS(*GridFsPrefix).Create(filename)
@@ -170,6 +178,13 @@ func InsertImageAndThumbnail(id string, file *bytes.Reader, filename string, mas
 			return
 		}
 		defer storedThumbFile.Close()
+
+		_, err = io.Copy(storedFile, bytes.NewReader(fileBytesArray))
+		if err != nil {
+			return
+		}
+
+		file := bytes.NewReader(fileBytesArray)
 
 		img, filetype, err := image.Decode(file)
 		if err != nil {
@@ -203,16 +218,12 @@ func InsertImageAndThumbnail(id string, file *bytes.Reader, filename string, mas
 		switch filetype {
 		case "jpeg", "jpg":
 			jpeg.Encode(storedThumbFile, thumb, nil)
-			jpeg.Encode(storedFile, img, nil)
 		case "bmp":
 			bmp.Encode(storedThumbFile, thumb)
-			bmp.Encode(storedFile, img)
 		case "png":
 			png.Encode(storedThumbFile, thumb)
-			png.Encode(storedFile, img)
 		case "gif":
 			gif.Encode(storedThumbFile, thumb, nil)
-			gif.Encode(storedFile, img, nil)
 		}
 
 		fileId := storedFile.Id().(bson.ObjectId)
@@ -358,4 +369,22 @@ func DeleteImage(id string) (err error) {
 		return
 	}
 	return
+}
+
+func checkForExistedImage(id string, isNew bool) error {
+	var err error
+	if isNew {
+		_, err = GetAvatarStructById(id)
+		if err == nil {
+			return errors.New("avatar for this user is already exists")
+		} else if err.Error() != "not found" {
+			return err
+		}
+	} else {
+		err = DeleteImage(id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

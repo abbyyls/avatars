@@ -6,15 +6,16 @@ all: install build
 install:
 	go get -v ./...
 
-run:
-	go run *.go
-
 build:
 	go build -o $(EXECUTABLE_FILE_NAME)
-	
+
+run: build
+	./$(EXECUTABLE_FILE_NAME)
+
+test:
+	go test -cover -short ./...
+
 clean:
 	rm ./$(EXECUTABLE_FILE_NAME)
 
-buildrun: build run
-
-.PHONY: all run install build buildrun clean
+.PHONY: all install build run test clean
