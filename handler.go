@@ -15,7 +15,6 @@ import (
 	"github.com/nfnt/resize"
 	"github.com/zenazn/goji/web"
 	"golang.org/x/image/bmp"
-	"fmt"
 )
 
 var supportedMediaTypes = []string{"image/jpeg", "image/jpg", "image/bmp", "image/png", "image/png"}
@@ -41,7 +40,6 @@ func ChangeMask(c web.C, w http.ResponseWriter, r *http.Request) {
 	var avatarInterface interface{}
 
 	decoder := json.NewDecoder(r.Body)
-	fmt.Println(r.Body)
 	var mask Mask
 	err := decoder.Decode(&mask)
 	if err != nil {
