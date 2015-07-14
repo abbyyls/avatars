@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -34,13 +33,11 @@ func contains(slice []string, value string) bool {
 }
 
 // Get content type of file if set. Otherwise returns "application/octet-stream".
-func getFileType(file io.Reader) (reader *bytes.Reader, filetype string, err error) {
-	var array []byte
+func getFileType(file io.Reader) (array []byte, filetype string, err error) {
 	if array, err = ioutil.ReadAll(file); err != nil {
 		return
 	}
 	filetype = http.DetectContentType(array)
-	reader = bytes.NewReader(array)
 	return
 }
 
