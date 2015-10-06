@@ -5,7 +5,7 @@ ENV AV_HTTP 0.0.0.0:80
 
 ADD . /gopath/src/github.com/antonikonovalov/avatars
 WORKDIR /gopath/src/github.com/antonikonovalov/avatars
-RUN go get github.com/antonikonovalov/avatars
+RUN go install github.com/antonikonovalov/avatars
 
 EXPOSE 80
 ENTRYPOINT ["/gopath/bin/avatars"]
