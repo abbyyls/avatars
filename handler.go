@@ -17,7 +17,7 @@ import (
 	"golang.org/x/image/bmp"
 )
 
-var supportedMediaTypes = []string{"image/jpeg", "image/jpg", "image/bmp", "image/png", "image/png"}
+var supportedMediaTypes = []string{"image/jpeg", "image/jpg", "image/bmp", "image/png", "image/gif"}
 
 type Mask struct {
 	Mask []int `json:"mask"`
